@@ -15,10 +15,6 @@
 typedef struct
 {
 	/**
-	 * @brief   Write lock mutex.
-	 */
-    mutex_t write_lock;     /* Write lock mutex */
-	/**
 	 * @brief   Position of the head of the buffer.
 	 */
     uint32_t head;          /* Newest element */
@@ -51,9 +47,6 @@ typedef struct
 void CircularBuffer_Init(circular_buffer_t *Cbuff,
 						 uint8_t *buffer,
 						 uint32_t buffer_size);
-void CircularBuffer_InitMutex(circular_buffer_t *Cbuff);
-void CircularBuffer_Claim(circular_buffer_t *Cbuff);
-void CircularBuffer_Release(circular_buffer_t *Cbuff);
 uint32_t CircularBuffer_SpaceLeft(circular_buffer_t *Cbuff);
 void CircularBuffer_WriteSingle(circular_buffer_t *Cbuff, uint8_t data);
 void CircularBuffer_WriteChunk(circular_buffer_t *Cbuff,

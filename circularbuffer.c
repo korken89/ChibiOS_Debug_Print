@@ -43,37 +43,6 @@ void CircularBuffer_Init(circular_buffer_t *Cbuff,
     Cbuff->tail = 0;
     Cbuff->size = buffer_size;
     Cbuff->buffer = buffer;
-    CircularBuffer_InitMutex(Cbuff);
-}
-
-/**
- * @brief               Initializes the circular buffer mutex.
- *
- * @param[in] Cbuff     Pointer to the circular buffer.
- */
-void CircularBuffer_InitMutex(circular_buffer_t *Cbuff)
-{
-    chMtxObjectInit(&Cbuff->write_lock);
-}
-
-/**
- * @brief               Claims a circular buffer using the mutex.
- *
- * @param[in] Cbuff     Pointer to the circular buffer.
- */
-void CircularBuffer_Claim(circular_buffer_t *Cbuff)
-{
-    chMtxLock(&Cbuff->write_lock);
-}
-
-/**
- * @brief               Releases a circular buffer using the mutex.
- *
- * @param[in] Cbuff     Pointer to the circular buffer.
- */
-void CircularBuffer_Release(circular_buffer_t *Cbuff)
-{
-    chMtxUnlock(&Cbuff->write_lock);
 }
 
 /**

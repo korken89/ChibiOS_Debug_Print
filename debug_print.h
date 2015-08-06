@@ -6,8 +6,10 @@
 /*===========================================================================*/
 
 #ifndef DEBUG_BUFFER_SIZE
-#define DEBUG_BUFFER_SIZE 128
+#define DEBUG_BUFFER_SIZE 256
 #endif
+
+extern BaseSequentialStream debug_print;
 
 /*===========================================================================*/
 /* Module data structures and types.                                         */
@@ -25,3 +27,4 @@
 /* External declarations.                                                    */
 /*===========================================================================*/
 
+void vInitDebugPrint(BaseSequentialStream *output_bss);
