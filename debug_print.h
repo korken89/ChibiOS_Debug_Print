@@ -28,3 +28,5 @@ extern BaseSequentialStream debug_print;
 /*===========================================================================*/
 
 void vInitDebugPrint(BaseSequentialStream *output_bss);
+
+#endif

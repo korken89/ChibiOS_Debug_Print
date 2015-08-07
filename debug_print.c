@@ -6,7 +6,6 @@
 
 #include "ch.h"
 #include "hal.h"
-#include "circularbuffer.h"
 #include "debug_print.h"
 
 /*===========================================================================*/
@@ -14,6 +13,29 @@
 /*===========================================================================*/
 
 static msg_t bss2cbuff(void *instance, uint8_t b);
+
+/**
+ * @brief   Circular buffer holder definition.
+ */
+typedef struct
+{
+	/**
+	 * @brief   Position of the head of the buffer.
+	 */
+    uint32_t head;          /* Newest element */
+	/**
+	 * @brief   Position of the tail of the buffer.
+	 */
+    uint32_t tail;          /* Oldest element */
+	/**
+	 * @brief   Size of the circular buffer.
+	 */
+    uint32_t size;          /* Size of buffer */
+	/**
+	 * @brief   Pointer to the data holding region.
+	 */
+    uint8_t *buffer;        /* Pointer to memory area */
+} circular_buffer_t;
 
 /*===========================================================================*/
 /* Module exported variables.                                                */
@@ -41,6 +63,82 @@ static circular_buffer_t *cbuff_ptr;
 /*===========================================================================*/
 /* Module local functions.                                                   */
 /*===========================================================================*/
+
+/**
+ * @brief                   Initializes a circular buffer except the mutex.
+ *
+ * @param[in] Cbuff         Pointer to the circular buffer.
+ * @param[in] buffer        Pointer to where the circular buffer data is stored.
+ * @param[in] buffer_size   Size of the circular buffer in bytes.
+ */
+static void CircularBuffer_Init(circular_buffer_t *Cbuff,
+                         uint8_t *buffer,
+                         uint32_t buffer_size)
+{
+    Cbuff->head = 0;
+    Cbuff->tail = 0;
+    Cbuff->size = buffer_size;
+    Cbuff->buffer = buffer;
+}
+
+/**
+ * @brief               Writes a byte to a circular buffer.
+ *
+ * @param[in] Cbuff     Pointer to the circular buffer.
+ */
+static void CircularBuffer_WriteSingle(circular_buffer_t *Cbuff, uint8_t data)
+{
+    Cbuff->buffer[Cbuff->head] = data;
+    Cbuff->head = ((Cbuff->head + 1) % Cbuff->size);
+}
+
+/**
+ * @brief               Increment the circular buffer pointer to math the
+ *                      number of bytes written.
+ *
+ * @param[in/out] Cbuff Pointer to the circular buffer.
+ * @param[in] count     Number of bytes to increment the pointer.
+ */
+static bool CircularBuffer_Increment(circular_buffer_t *Cbuff, int32_t count)
+{
+    if (count == -1) /* Error! */
+        return HAL_FAILED;
+
+    else
+    {
+        Cbuff->head = ((Cbuff->head + count) % Cbuff->size);
+        return HAL_SUCCESS;
+    }
+}
+
+/**
+ * @brief               Generates a pointer to the tail byte and returns a size
+ *                      which for how many bytes can be read from the circular
+ *                      buffer.
+ *
+ * @param[in/out] Cbuff Pointer to the circular buffer.
+ * @param[out] size     Pointer to the size holder.
+ * @return              Pointer to the buffer with offset.
+ */
+static uint8_t *CircularBuffer_GetReadPointer(circular_buffer_t *Cbuff,
+                                       uint32_t *size)
+{
+    uint8_t *p;
+
+    p = (Cbuff->buffer + Cbuff->tail);
+
+    if (Cbuff->head < Cbuff->tail)
+        *size = Cbuff->size - Cbuff->tail;
+    else
+        *size = Cbuff->head - Cbuff->tail;
+
+    return p;
+}
+
+static void CircularBuffer_IncrementTail(circular_buffer_t *Cbuff, int32_t count)
+{
+    Cbuff->tail = ((Cbuff->tail + count) % Cbuff->size);
+}
 
 static msg_t bss2cbuff(void *instance, uint8_t b)
 {
