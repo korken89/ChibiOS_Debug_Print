@@ -156,11 +156,10 @@ static uint32_t CircularBuffer_SpaceLeft(circular_buffer_t *Cbuff)
  * @param[in/out] count Pointer to tracking variable for the size of the
  *                      data being written to the circular buffer.
  */
-void CircularBuffer_WriteNoIncrement(circular_buffer_t *Cbuff,
+static void CircularBuffer_WriteNoIncrement(circular_buffer_t *Cbuff,
                                      uint8_t data,
-                                     int32_t *count,
-                                     uint8_t *crc8,
-                                     uint16_t *crc16)
+                                     int32_t *count
+                                     )
 {
     if (data == SLIP_END)
     {
@@ -202,6 +201,7 @@ void CircularBuffer_WriteSYNCNoIncrement(circular_buffer_t *Cbuff,
 
 static msg_t bss2cbuff(void *instance, uint8_t b)
 {
+    (void) instance;
     if (cbuff_ptr != NULL)
     {
         CircularBuffer_WriteSingle(cbuff_ptr, b);
@@ -250,6 +250,7 @@ static bool TransmitCircularBuffer(circular_buffer_t *Cbuff)
         return HAL_FAILED;
 }
 
+static circular_buffer_t *slip_cbuff_ptr;
 
 static THD_FUNCTION(DebugPrintTask, arg)
 {
@@ -289,7 +290,6 @@ static THD_FUNCTION(DebugPrintTask, arg)
 /* Module exported functions.                                                */
 /*===========================================================================*/
 
-static circular_buffer_t *slip_cbuff_ptr;
 
 void vInitDebugPrint(BaseSequentialStream *output_bss)
 {
@@ -307,6 +307,7 @@ bool GenerateSLIP(uint8_t *data, const uint32_t data_count)
 {
     int32_t count = 0;
     uint32_t i;
+    circular_buffer_t *Cbuff = slip_cbuff_ptr;
 
     if (CircularBuffer_SpaceLeft(Cbuff) < (data_count + 2))
         return HAL_FAILED;
