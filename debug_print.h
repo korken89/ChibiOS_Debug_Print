@@ -9,6 +9,12 @@
 #define DEBUG_BUFFER_SIZE 256
 #endif
 
+#define SLIP_END        0xC0
+#define SLIP_ESC        0xDB
+#define SLIP_ESC_END    0xDC
+#define SLIP_ESC_ESC    0xDD
+
+
 extern BaseSequentialStream debug_print;
 
 /*===========================================================================*/
@@ -28,5 +34,6 @@ extern BaseSequentialStream debug_print;
 /*===========================================================================*/
 
 void vInitDebugPrint(BaseSequentialStream *output_bss);
+bool GenerateSLIP(uint8_t *data, const uint32_t data_count);
 
 #endif

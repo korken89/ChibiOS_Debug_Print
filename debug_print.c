@@ -140,6 +140,66 @@ static void CircularBuffer_IncrementTail(circular_buffer_t *Cbuff, int32_t count
     Cbuff->tail = ((Cbuff->tail + count) % Cbuff->size);
 }
 
+static uint32_t CircularBuffer_SpaceLeft(circular_buffer_t *Cbuff)
+{
+    return (Cbuff->tail + Cbuff->size - Cbuff->head - 1) % Cbuff->size;
+}
+
+
+
+/**
+ * @brief               Writes a byte to the circular buffer, if its vaule is
+ *                      SYNC: write it twice.
+ *
+ * @param[in/out] Cbuff Pointer to the circular buffer.
+ * @param[in/out] data  Byte being written.
+ * @param[in/out] count Pointer to tracking variable for the size of the
+ *                      data being written to the circular buffer.
+ */
+void CircularBuffer_WriteNoIncrement(circular_buffer_t *Cbuff,
+                                     uint8_t data,
+                                     int32_t *count,
+                                     uint8_t *crc8,
+                                     uint16_t *crc16)
+{
+    if (data == SLIP_END)
+    {
+        Cbuff->buffer[(Cbuff->head + *count) % Cbuff->size] = SLIP_ESC;
+        *count += 1;
+        Cbuff->buffer[(Cbuff->head + *count) % Cbuff->size] = SLIP_ESC_END;
+        *count += 1;
+    }
+    else if (data == SLIP_ESC)
+    {
+        Cbuff->buffer[(Cbuff->head + *count) % Cbuff->size] = SLIP_ESC;
+        *count += 1;
+        Cbuff->buffer[(Cbuff->head + *count) % Cbuff->size] = SLIP_ESC_ESC;
+        *count += 1;
+    }
+    else
+    {
+        /* Check if we have 2 bytes free, in case of data = SYNC */
+        Cbuff->buffer[(Cbuff->head + *count) % Cbuff->size] = data;
+        *count += 1;
+    }
+}
+
+/**
+ * @brief               Writes a SYNC byte to the circular buffer.
+ *
+ * @param[in/out] Cbuff Pointer to the circular buffer.
+ * @param[in/out] count Pointer to tracking variable for the size of the
+ *                      data being written to the circular buffer.
+ * @param[in] crc8      Pointer to the CRC8 data holder.
+ * @param[in] crc16     Pointer to the CRC16 data holder.
+ */
+void CircularBuffer_WriteSYNCNoIncrement(circular_buffer_t *Cbuff,
+                                         int32_t *count)
+{
+    Cbuff->buffer[(Cbuff->head + *count) % Cbuff->size] = SLIP_ESC;
+    *count += 1;
+}
+
 static msg_t bss2cbuff(void *instance, uint8_t b)
 {
     if (cbuff_ptr != NULL)
@@ -197,17 +257,23 @@ static THD_FUNCTION(DebugPrintTask, arg)
 
     /* Circular buffer holder */
     circular_buffer_t cbuff;
+    circular_buffer_t slip_cbuff;
 
     /* Buffer for transmitting */
     static uint8_t debug_buffer[DEBUG_BUFFER_SIZE];
+    static uint8_t slip_buffer[DEBUG_BUFFER_SIZE];
 
     /* Initialize the transmit circular buffer */
     CircularBuffer_Init(&cbuff,
                         debug_buffer,
                         DEBUG_BUFFER_SIZE);
 
+    CircularBuffer_Init(&slip_cbuff,
+                        slip_buffer,
+                        DEBUG_BUFFER_SIZE);
 
     cbuff_ptr = &cbuff;
+    slip_cbuff_ptr = &slip_cbuff;
 
     while(1)
     {
@@ -215,12 +281,15 @@ static THD_FUNCTION(DebugPrintTask, arg)
 
         /* We will only get here is a request to send data has been received */
         TransmitCircularBuffer(&cbuff);
+        TransmitCircularBuffer(&slip_cbuff);
     }
 }
 
 /*===========================================================================*/
 /* Module exported functions.                                                */
 /*===========================================================================*/
+
+static circular_buffer_t *slip_cbuff_ptr;
 
 void vInitDebugPrint(BaseSequentialStream *output_bss)
 {
@@ -231,4 +300,27 @@ void vInitDebugPrint(BaseSequentialStream *output_bss)
                       IDLEPRIO + 1,
                       DebugPrintTask,
                       NULL);
+}
+
+
+bool GenerateSLIP(uint8_t *data, const uint32_t data_count)
+{
+    int32_t count = 0;
+    uint32_t i;
+
+    if (CircularBuffer_SpaceLeft(Cbuff) < (data_count + 2))
+        return HAL_FAILED;
+
+    /* Add the header */
+    CircularBuffer_WriteSYNCNoIncrement(Cbuff, &count);
+
+    /* Add the data to the message */
+    for (i = 0; i < data_count; i++)
+        CircularBuffer_WriteNoIncrement(Cbuff, data[i], &count);
+
+    /* Add the end */
+    CircularBuffer_WriteSYNCNoIncrement(Cbuff, &count);
+
+    /* Check if the message fit inside the buffer */
+    return CircularBuffer_Increment(Cbuff, count);
 }
